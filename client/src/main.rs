@@ -48,6 +48,16 @@ pub fn handle_server_events(state: &mut ClientState) {
         let ev = GameOutputMessage::deserialize_json(&ev);
         match ev {
             GameOutputMessage::PlayerPositions { positions } => {
+                // remove previous players
+                let mut remove = vec![];
+                for id in state.other_players.keys() {
+                    if !positions.contains_key(id) {
+                        remove.push(*id);
+                    }
+                }
+                for id in remove {
+                    state.other_players.remove(&id);
+                }
                 for (id, pos) in positions {
                     miniquad::warn!("Player {} is at {:?}", id, pos);
                     let is_my_id = if let Some(my_id) = state.connected_id {
