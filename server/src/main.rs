@@ -3,7 +3,7 @@ use axum::{
     routing::get,
     Router,
     extract::{ws::{Message, WebSocket, WebSocketUpgrade}, ConnectInfo, State},
-    response::{IntoResponse, Html}, TypedHeader, headers,
+    response::{IntoResponse, Html}, TypedHeader, headers, http::HeaderValue,
 };
 use tokio::{sync::{mpsc::{Receiver, self, Sender}, oneshot, RwLock}, time::Instant};
 use serde::{Serialize, Deserialize};
@@ -34,6 +34,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(homepage))
         .route("/index.html", get(homepage))
+        .route("/game.wasm", get(wasmbinary))
         .route("/ws", get(ws_handler).with_state(state));
 
     // run it with hyper on localhost:3000
@@ -100,7 +101,7 @@ async fn game_state_manager(mut rx: Receiver<GameStateMsg>) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
             GameStateMsg::Tick => {
-                println!("TICK");
+                // println!("TICK");
                 let out_msg = game_state.to_output_msg();
                 let out = Arc::new(out_msg);
                 let mut removes = vec![];
@@ -153,6 +154,12 @@ async fn game_state_manager(mut rx: Receiver<GameStateMsg>) {
 
 async fn homepage() -> impl IntoResponse {
     Html(include_str!("../assets/index.html")).into_response()
+}
+
+async fn wasmbinary() -> impl IntoResponse {
+    let mut resp = include_bytes!("../../target/wasm32-unknown-unknown/release/client.wasm").into_response();
+    resp.headers_mut().insert("Content-Type", HeaderValue::from_static("application/wasm"));
+    resp
 }
 
 async fn ws_handler(
