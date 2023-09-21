@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Websocket Demo</title>
+</head>
+<body>
+    <h2>Open the console to see stuff, then refresh to initiate exchange.</h2>
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:3000/ws");
+
+        socket.addEventListener('open', function (event) {
+            // socket.send('Hello Server!');
+        });
+
+        socket.addEventListener('message', function (event) {
+            console.log('Message from server ', event.data);
+        });
+
+        setInterval(() => {
+            const obj = { Move: { mx: 5.0, my: 2.0 } };
+            const blob = JSON.stringify(obj);
+            console.log("Sending blob over websocket");
+            socket.send(blob);
+        }, 500);
+    </script>
+</body>
+</html>
