@@ -10,13 +10,3 @@ tokio = { version = "1.32.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 futures = "0.3"
-
-
-[profile.release]
-lto = true
-opt-level = 3
-codegen-units = 1
-strip = "symbols"
-
-[profile.dev]
-strip = "symbols"
