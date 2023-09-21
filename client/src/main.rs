@@ -107,6 +107,7 @@ async fn main() {
             next_frame().await;
             continue;
         }
+        draw_rectangle_lines(MIN_X_Y, MIN_X_Y, MAX_X_Y - MIN_X_Y, MAX_X_Y - MIN_X_Y, 2.0, WHITE);
         let mut dx = 0.0;
         let mut dy = 0.0;
         if is_key_down(KeyCode::A) {
