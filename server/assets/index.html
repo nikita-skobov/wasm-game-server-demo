@@ -38,7 +38,7 @@
                 register_plugin,
                 on_init: () => {
                     // TODO: handle wss, get hostname from browser
-                    const socket = new WebSocket("ws://127.0.0.1:3000/ws");
+                    const socket = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws");
                     window.socket = socket;
                     // socket.addEventListener('open', function (event) {
                     //     // socket.send('Hello Server!');
