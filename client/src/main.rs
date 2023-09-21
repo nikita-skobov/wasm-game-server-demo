@@ -1,7 +1,24 @@
 use macroquad::prelude::*;
+use sapp_jsutils::JsObject;
+
+extern "C" {
+    fn hi_from_wasm(jsobj: JsObject);
+}
+
+#[no_mangle]
+pub extern "C" fn hi_rust(js_object: JsObject) {
+    let mut message = String::new();
+
+    js_object.to_string(&mut message);
+    miniquad::warn!("printing from rust: {}", message);
+}
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
+    unsafe {
+        let obj = JsObject::string("eeee123");
+        hi_from_wasm(obj);
+    }
     loop {
         clear_background(RED);
 

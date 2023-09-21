@@ -21,8 +21,26 @@
 </head>
 <body>
     <canvas id="glcanvas" tabindex='1'></canvas>
+    <script src="https://not-fl3.github.io/miniquad-samples/sapp_jsutils.js"></script>
     <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+    <script>
+        register_plugin = function (importObject) {
+            importObject.env.hi_from_wasm = function (js_object) {
+                let thing = consume_js_object(js_object)
+                console.log("hi")
+                console.log(thing)
+            }
+        }
+
+        document.onclick = function () {
+            let obj = js_object("a12")
+            wasm_exports.hi_rust(obj);
+        };
+
+        // miniquad_add_plugin receive an object with two fields: register_plugin and on_init. Both are functions, both are optional.
+        miniquad_add_plugin({register_plugin});
+    </script>
     <script>load("game.wasm");</script> <!-- Your compiled wasm file -->
     <script>
         // const socket = new WebSocket("ws://127.0.0.1:3000/ws");
