@@ -7,6 +7,8 @@ pub const TICKRATE: u128 = 64;
 /// eg if TIME_PER_TICK == 156 => 15.6 milliseconds
 pub const TIME_PER_TICK: u128 = 10_000 / TICKRATE;
 pub const MAX_MOVEMENT: f32 = 20.0;
+pub const MOVE_BY: f32 = MAX_MOVEMENT / 2.0;
+pub const PLAYER_SIZE: f32 = 25.0;
 
 pub const START_X_Y: f32 = 50.0;
 pub const MIN_X_Y: f32 = 0.0;

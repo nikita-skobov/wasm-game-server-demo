@@ -53,7 +53,11 @@ pub fn handle_server_events(state: &mut ClientState) {
                 }
             }
             GameOutputMessage::YouAre { id } => {
+                let mut rng = fastrand::Rng::with_seed(id);
+                let h = rng.f32();
+                let color = macroquad::color::hsl_to_rgb(h, 1.0, 0.5);
                 state.connected_id = Some(id);
+                state.color = color;
             }
         }
     }
@@ -62,6 +66,9 @@ pub fn handle_server_events(state: &mut ClientState) {
 #[derive(Default)]
 pub struct ClientState {
     pub connected_id: Option<u64>,
+    pub x: f32,
+    pub y: f32,
+    pub color: Color,
 }
 
 #[macroquad::main("BasicShapes")]
@@ -80,16 +87,37 @@ async fn main() {
             next_frame().await;
             continue;
         }
-        if is_key_pressed(KeyCode::A) {
-            send_message(GameInputMessage::Move { mx: 1.0, my: 3.5 });
+        let mut dx = 0.0;
+        let mut dy = 0.0;
+        if is_key_down(KeyCode::A) {
+            dx -= MOVE_BY;
         }
-
-        // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-
-        // draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
-
+        if is_key_down(KeyCode::D) {
+            dx += MOVE_BY;
+        }
+        if is_key_down(KeyCode::W) {
+            dy -= MOVE_BY;
+        }
+        if is_key_down(KeyCode::S) {
+            dy += MOVE_BY;
+        }
+        let v = Vec2::new(dx, dy);
+        if let Some(n) = v.try_normalize() {
+            dx = n.x;
+            dy = n.y;
+        }
+        let ox = state.x;
+        let oy = state.y;
+        state.x += dx;
+        state.y += dy;
+        fix_position_within_bounds(&mut state.x, &mut state.y);
+        let true_diff_x = state.x - ox;
+        let true_diff_y = state.y - oy;
+        if true_diff_x != 0.0 || true_diff_y != 0.0 {
+            send_message(GameInputMessage::Move { mx: true_diff_x, my: true_diff_y });
+        }
+        draw_circle(state.x, state.y, PLAYER_SIZE, state.color);
+        draw_circle_lines(state.x, state.y, PLAYER_SIZE, 3.0, WHITE);
         next_frame().await
     }
 }
