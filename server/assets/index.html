@@ -34,8 +34,8 @@
         }
 
         document.onclick = function () {
-            let obj = js_object("a12")
-            wasm_exports.hi_rust(obj);
+            let obj = js_object("a12");
+            wasm_exports.push_ws_message(obj);
         };
 
         // miniquad_add_plugin receive an object with two fields: register_plugin and on_init. Both are functions, both are optional.
