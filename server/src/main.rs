@@ -5,8 +5,8 @@ use axum::{
     extract::{ws::{Message, WebSocket, WebSocketUpgrade}, ConnectInfo, State},
     response::{IntoResponse, Html}, TypedHeader, headers, http::HeaderValue,
 };
+use shared::*;
 use tokio::{sync::{mpsc::{Receiver, self, Sender}, oneshot, RwLock}, time::Instant};
-use serde::{Serialize, Deserialize};
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
 
@@ -44,12 +44,6 @@ async fn main() {
         .unwrap();
 }
 
-const TICKRATE: u128 = 64;
-/// measured in 10* millisecond.
-/// eg if TIME_PER_TICK == 156 => 15.6 milliseconds
-const TIME_PER_TICK: u128 = 10_000 / TICKRATE;
-const MAX_MOVEMENT: f32 = 20.0;
-
 type SharedState = Arc<RwLock<AppState>>;
 
 struct AppState {
@@ -68,10 +62,6 @@ pub enum GameStateMsg {
     Tick,
 }
 
-#[derive(Serialize)]
-pub enum GameOutputMessage {
-    PlayerPositions { positions: HashMap<u64, (f32, f32)> }
-}
 
 #[derive(Clone)]
 pub struct PlayerState {
@@ -116,8 +106,12 @@ async fn game_state_manager(mut rx: Receiver<GameStateMsg>) {
                 }
             }
             GameStateMsg::PlayerRegistered { id, tx } => {
+                let out = Arc::new(GameOutputMessage::YouAre { id });
+                if let Err(e) = tx.send(out).await {
+                    println!("Failed to give player initial id={} {:?}", id, e);
+                }
                 game_state.players.insert(id, PlayerState {
-                    x: 0.0, y: 0.0, tx,
+                    x: START_X_Y, y: START_X_Y, tx,
                     last_cmd_at: Instant::now(),
                 });
             }
@@ -146,6 +140,7 @@ async fn game_state_manager(mut rx: Receiver<GameStateMsg>) {
                 }
                 player.x += mx;
                 player.y += my;
+                fix_position_within_bounds(&mut player.x, &mut player.y);
                 println!("Player {id} is now at {},{}", player.x, player.y);
             }
         }
@@ -178,11 +173,6 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state.clone()))
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum WsMsg {
-    Move { mx: f32, my: f32 }
-}
-
 /// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket(socket: WebSocket, who: SocketAddr, state: SharedState) {
     let (gameout_tx, mut gameout_rx) = mpsc::channel::<Arc<GameOutputMessage>>(32);
@@ -198,8 +188,7 @@ async fn handle_socket(socket: WebSocket, who: SocketAddr, state: SharedState) {
 
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = gameout_rx.recv().await {
-            let txt = serde_json::to_string(msg.as_ref()).unwrap();
-            if let Err(e) = sender.send(Message::Text(txt)).await {
+            if let Err(e) = sender.send(Message::Text(msg.serialize_json())).await {
                 println!("Error sending message for player {id}. {e}. closing their connection");
                 break;
             }
@@ -214,11 +203,11 @@ async fn handle_socket(socket: WebSocket, who: SocketAddr, state: SharedState) {
                 txt
             } else { continue; };
             // failure to deserialize means user is on an invalid client, drop em
-            let ws_msg: WsMsg = if let Ok(deserd) = serde_json::from_str(&msg_txt) {
+            let ws_msg: GameInputMessage = if let Ok(deserd) = serde_json::from_str(&msg_txt) {
                 deserd
             } else { break; };
             match ws_msg {
-                WsMsg::Move { mx, my } => {
+                GameInputMessage::Move { mx, my } => {
                     let r = state.read().await;
                     let _ = r.game_state_tx.send(GameStateMsg::MoveBy { id, mx, my }).await;
                 }

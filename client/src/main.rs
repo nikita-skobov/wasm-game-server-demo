@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 use sapp_jsutils::JsObject;
+use shared::*;
 use std::sync::{OnceLock, Mutex};
 
 fn ws_messages() -> &'static mut Mutex<Vec<String>> {
@@ -11,7 +12,15 @@ fn ws_messages() -> &'static mut Mutex<Vec<String>> {
 }
 
 extern "C" {
-    fn hi_from_wasm(jsobj: JsObject);
+    fn send_ws_message(jsobj: JsObject);
+}
+
+fn send_message(msg: GameInputMessage) {
+    unsafe {
+        let s = msg.serialize_json();
+        let obj = JsObject::string(&s);
+        send_ws_message(obj);
+    }
 }
 
 #[no_mangle]
@@ -25,7 +34,7 @@ pub extern "C" fn push_ws_message(jsobj: JsObject) {
     }
 }
 
-pub fn handle_server_events() {
+pub fn handle_server_events(state: &mut ClientState) {
     let data = match ws_messages().lock() {
         Ok(mut items) => {
             std::mem::take::<Vec<String>>(&mut items.as_mut())
@@ -36,25 +45,50 @@ pub fn handle_server_events() {
         },
     };
     for ev in data {
-        miniquad::warn!("WS: {}", ev);
+        let ev = GameOutputMessage::deserialize_json(&ev);
+        match ev {
+            GameOutputMessage::PlayerPositions { positions } => {
+                for (id, pos) in positions {
+                    miniquad::warn!("Player {} is at {:?}", id, pos);
+                }
+            }
+            GameOutputMessage::YouAre { id } => {
+                state.connected_id = Some(id);
+            }
+        }
     }
+}
+
+#[derive(Default)]
+pub struct ClientState {
+    pub connected_id: Option<u64>,
 }
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    unsafe {
-        let obj = JsObject::string("eeee123");
-        hi_from_wasm(obj);
-    }
+    let mut state = ClientState::default();
     loop {
-        clear_background(RED);
-        handle_server_events();
+        let b_color = if state.connected_id.is_some() {
+            BLACK
+        } else {
+            GRAY
+        };
+        clear_background(b_color);
+        handle_server_events(&mut state);
+        if state.connected_id.is_none() {
+            draw_text("CONNECTING...", 20.0, 20.0, 48.0, WHITE);
+            next_frame().await;
+            continue;
+        }
+        if is_key_pressed(KeyCode::A) {
+            send_message(GameInputMessage::Move { mx: 1.0, my: 3.5 });
+        }
 
-        draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
+        // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
+        // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
+        // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
 
-        draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+        // draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
 
         next_frame().await
     }

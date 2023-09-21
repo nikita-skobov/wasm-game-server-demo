@@ -179,6 +179,7 @@ version = "0.1.0"
 dependencies = [
  "macroquad",
  "sapp-jsutils",
+ "shared",
 ]
 
 [[package]]
@@ -881,8 +882,8 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "futures",
- "serde",
  "serde_json",
+ "shared",
  "tokio",
 ]
 
@@ -895,6 +896,14 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "shared"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

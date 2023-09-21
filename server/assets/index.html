@@ -21,44 +21,44 @@
 </head>
 <body>
     <canvas id="glcanvas" tabindex='1'></canvas>
-    <script src="https://not-fl3.github.io/miniquad-samples/sapp_jsutils.js"></script>
     <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+    <script src="https://not-fl3.github.io/miniquad-samples/sapp_jsutils.js"></script>
     <script>
-        register_plugin = function (importObject) {
-            importObject.env.hi_from_wasm = function (js_object) {
-                let thing = consume_js_object(js_object)
-                console.log("hi")
-                console.log(thing)
+        window.addEventListener('load', () => {
+            register_plugin = function (importObject) {
+                importObject.env.send_ws_message = function (js_object) {
+                    let msg = consume_js_object(js_object)
+                    window.socket.send(msg);
+                }
             }
-        }
-
-        document.onclick = function () {
-            let obj = js_object("a12");
-            wasm_exports.push_ws_message(obj);
-        };
-
-        // miniquad_add_plugin receive an object with two fields: register_plugin and on_init. Both are functions, both are optional.
-        miniquad_add_plugin({register_plugin});
-    </script>
-    <script>load("game.wasm");</script> <!-- Your compiled wasm file -->
-    <script>
-        // const socket = new WebSocket("ws://127.0.0.1:3000/ws");
-
-        // socket.addEventListener('open', function (event) {
-        //     // socket.send('Hello Server!');
-        // });
-
-        // socket.addEventListener('message', function (event) {
-        //     console.log('Message from server ', event.data);
-        // });
-
-        // setInterval(() => {
-        //     const obj = { Move: { mx: 5.0, my: 2.0 } };
-        //     const blob = JSON.stringify(obj);
-        //     console.log("Sending blob over websocket");
-        //     socket.send(blob);
-        // }, 500);
+    
+            // miniquad_add_plugin receive an object with two fields: register_plugin and on_init. Both are functions, both are optional.
+            miniquad_add_plugin({
+                register_plugin,
+                on_init: () => {
+                    // TODO: handle wss, get hostname from browser
+                    const socket = new WebSocket("ws://127.0.0.1:3000/ws");
+                    window.socket = socket;
+                    // socket.addEventListener('open', function (event) {
+                    //     // socket.send('Hello Server!');
+                    // });
+    
+                    socket.addEventListener('message', function (event) {
+                        let obj = js_object(event.data);
+                        wasm_exports.push_ws_message(obj);
+                    });
+    
+                    // setInterval(() => {
+                    //     const obj = { Move: { mx: 5.0, my: 2.0 } };
+                    //     const blob = JSON.stringify(obj);
+                    //     console.log("Sending blob over websocket");
+                    //     socket.send(blob);
+                    // }, 500);
+                }
+            });
+            load("game.wasm");
+        })
     </script>
 </body>
 </html>
